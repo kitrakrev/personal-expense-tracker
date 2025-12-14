@@ -1,6 +1,6 @@
 import datetime
 
-from config.db import get_result, get_result_dict
+from config.db import get_result_dict
 
 class TransactionModel:
 
@@ -60,7 +60,7 @@ class TransactionModel:
     @staticmethod
     def get_daily_expense(login_id: int, required_month_str: datetime.date):  # use format yyyy-mm-dd
         query = '''
-            select sum(transaction), extract(day from datestamp)
+            select sum(transaction), extract(day from datestamp) as day
             from 
             public.user_transactions
             where login_id = %s AND (date_part('month', datestamp) = extract(month from timestamp %s))
@@ -68,35 +68,20 @@ class TransactionModel:
             group by datestamp
         '''
         param = (login_id, required_month_str, required_month_str)
-
-        result = get_result(query, param)
-        d = []
-        for item in result:
-            d.append({
-                "sum": item[0],
-                "day": int(item[1])
-            })
-        return d
+        return get_result_dict(query, param)
 
     # get monthwise expenses in a given year of an user
     @staticmethod
     def get_monthly_expense(login_id: int, required_year_str: datetime.date):  # use format yyyy-mm-dd
         query = '''
-            select sum(transaction), extract(month from datestamp)
+            select sum(transaction) as sum, extract(month from datestamp) as month
             from 
             public.user_transactions
             where login_id = %s AND (date_part('year', datestamp) = extract(year from timestamp %s)) 
             group by  extract(month from datestamp)
         '''
         param = (login_id, required_year_str)
-        result = get_result(query, param)
-        d = []
-        for item in result:
-            d.append({
-                "sum": item[0],
-                "month": int(item[1])
-            })
-        return d
+        return get_result_dict(query, param)
 
     # get categorywise expenses in given month and given year of an user
     @staticmethod
@@ -110,17 +95,10 @@ class TransactionModel:
             group by category
         '''
         param = (login_id, required_month_str, required_month_str)
-        result = get_result(query, param)
-        d = []
-        for item in result:
-            d.append({
-                "sum": item[0],
-                "category": item[1]
-            })
-        return d
+        return get_result_dict(query, param)
 
     @staticmethod
-    def get_day_expense(login_id: int, required_date: datetime.date):
+    def get_day_expense(login_id: int, required_date: datetime.date) -> int:
         query = '''
             select sum(transaction) from 
             public.user_transactions
@@ -128,8 +106,8 @@ class TransactionModel:
             group by datestamp
         '''
         param = (login_id, required_date)
-        res = get_result(query, param)
-        return res
+        res = get_result_dict(query, param)
+        return 0 if not res else res[0]['sum']
 
     @staticmethod
     def get_month_expense(login_id: int, required_date: datetime.date):
@@ -140,8 +118,8 @@ class TransactionModel:
             AND (date_part('year', datestamp) = extract(year from timestamp %s)) 
             group by date_part('month', datestamp)'''
         param = (login_id, required_date, required_date)
-        res = get_result(query, param)
-        return res
+        res = get_result_dict(query, param)
+        return 0 if not res else res[0]['sum']
 
     # get specific year expense
     @staticmethod
@@ -152,8 +130,8 @@ class TransactionModel:
             where login_id = %s AND (date_part('year', datestamp) = extract(year from timestamp %s)) 
             group by date_part('year', datestamp)'''
         param = (login_id, required_date)
-        res = get_result(query, param)
-        return res
+        res = get_result_dict(query, param)
+        return 0 if not res else res[0]['sum']
 
     @staticmethod
     def get_sum_transactions(login_id: int)->list[dict]:
@@ -169,4 +147,5 @@ class TransactionModel:
                  where login_id = %s and event_id = %s
                  group by 1,2'''
         param = (login_id, event_id)
-        return get_result(query, param)
+        result = get_result_dict(query, param)
+        return 0 if not result else result[0]['sum']
